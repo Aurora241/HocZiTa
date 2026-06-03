@@ -1,6 +1,9 @@
 # Claude AI
 .claude/
 
+# Flutter metadata
+.metadata
+
 # Miscellaneous
 *.class
 *.log
