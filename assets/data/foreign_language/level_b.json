@@ -1,0 +1,17 @@
+[
+  { "id": 1, "word": "Ambitious",   "meaning": "Tham vọng",       "image_path": null },
+  { "id": 2, "word": "Brilliant",   "meaning": "Xuất sắc",        "image_path": null },
+  { "id": 3, "word": "Curious",     "meaning": "Tò mò",           "image_path": null },
+  { "id": 4, "word": "Diligent",    "meaning": "Chăm chỉ",        "image_path": null },
+  { "id": 5, "word": "Elegant",     "meaning": "Thanh lịch",      "image_path": null },
+  { "id": 6, "word": "Flexible",    "meaning": "Linh hoạt",       "image_path": null },
+  { "id": 7, "word": "Generous",    "meaning": "Hào phóng",       "image_path": null },
+  { "id": 8, "word": "Honest",      "meaning": "Trung thực",      "image_path": null },
+  { "id": 9, "word": "Innovative",  "meaning": "Sáng tạo",        "image_path": null },
+  { "id": 10, "word": "Joyful",     "meaning": "Vui vẻ",          "image_path": null },
+  { "id": 11, "word": "Knowledge",  "meaning": "Kiến thức",       "image_path": null },
+  { "id": 12, "word": "Leadership", "meaning": "Khả năng lãnh đạo","image_path": null },
+  { "id": 13, "word": "Motivated",  "meaning": "Có động lực",     "image_path": null },
+  { "id": 14, "word": "Nurture",    "meaning": "Nuôi dưỡng",      "image_path": null },
+  { "id": 15, "word": "Optimistic", "meaning": "Lạc quan",        "image_path": null }
+]

@@ -1,0 +1,17 @@
+[
+  { "id": 1, "word": "Apple",  "meaning": "Quả táo",    "image_path": null },
+  { "id": 2, "word": "Book",   "meaning": "Quyển sách", "image_path": null },
+  { "id": 3, "word": "Cat",    "meaning": "Con mèo",    "image_path": null },
+  { "id": 4, "word": "Dog",    "meaning": "Con chó",    "image_path": null },
+  { "id": 5, "word": "Egg",    "meaning": "Quả trứng",  "image_path": null },
+  { "id": 6, "word": "Fish",   "meaning": "Con cá",     "image_path": null },
+  { "id": 7, "word": "Grape",  "meaning": "Quả nho",    "image_path": null },
+  { "id": 8, "word": "House",  "meaning": "Ngôi nhà",   "image_path": null },
+  { "id": 9, "word": "Ice",    "meaning": "Nước đá",    "image_path": null },
+  { "id": 10, "word": "Juice", "meaning": "Nước ép",    "image_path": null },
+  { "id": 11, "word": "Key",   "meaning": "Chìa khóa",  "image_path": null },
+  { "id": 12, "word": "Lamp",  "meaning": "Cái đèn",    "image_path": null },
+  { "id": 13, "word": "Milk",  "meaning": "Sữa",        "image_path": null },
+  { "id": 14, "word": "Nose",  "meaning": "Cái mũi",    "image_path": null },
+  { "id": 15, "word": "Orange","meaning": "Quả cam",    "image_path": null }
+]

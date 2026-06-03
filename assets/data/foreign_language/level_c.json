@@ -1,0 +1,17 @@
+[
+  { "id": 1,  "word": "Aberration",    "meaning": "Sự lệch lạc",        "image_path": null },
+  { "id": 2,  "word": "Benevolent",    "meaning": "Nhân từ",             "image_path": null },
+  { "id": 3,  "word": "Clandestine",   "meaning": "Bí mật",              "image_path": null },
+  { "id": 4,  "word": "Deprecate",     "meaning": "Không tán thành",     "image_path": null },
+  { "id": 5,  "word": "Ephemeral",     "meaning": "Thoáng qua, ngắn ngủi","image_path": null },
+  { "id": 6,  "word": "Fortitude",     "meaning": "Sức chịu đựng",       "image_path": null },
+  { "id": 7,  "word": "Gregarious",    "meaning": "Thích giao du",       "image_path": null },
+  { "id": 8,  "word": "Heuristic",     "meaning": "Phương pháp khám phá", "image_path": null },
+  { "id": 9,  "word": "Impeccable",    "meaning": "Hoàn hảo",            "image_path": null },
+  { "id": 10, "word": "Juxtapose",     "meaning": "Đặt cạnh nhau",       "image_path": null },
+  { "id": 11, "word": "Kinesthetic",   "meaning": "Thuộc về vận động",   "image_path": null },
+  { "id": 12, "word": "Loquacious",    "meaning": "Hay nói",             "image_path": null },
+  { "id": 13, "word": "Meticulous",    "meaning": "Tỉ mỉ, cẩn thận",    "image_path": null },
+  { "id": 14, "word": "Nonchalant",    "meaning": "Thờ ơ, bình thản",    "image_path": null },
+  { "id": 15, "word": "Obfuscate",     "meaning": "Làm mờ, gây rối",     "image_path": null }
+]
