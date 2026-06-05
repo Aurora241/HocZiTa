@@ -177,6 +177,13 @@ class _CategoryCard extends StatelessWidget {
             colors: [startColor, endColor],
           ),
           borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: startColor.withValues(alpha: 0.45),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Stack(
           children: [

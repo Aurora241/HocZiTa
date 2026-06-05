@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../learn/learn_screen.dart';
@@ -24,7 +25,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ];
 
   void _onTabTapped(int index, bool isLoggedIn) {
-    // Game và Account cần đăng nhập
     if (index != 0 && !isLoggedIn) {
       _showLoginRequired(index);
       return;
@@ -65,11 +65,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         body: Center(child: Text('Có lỗi xảy ra')),
       ),
       data: (isLoggedIn) => Scaffold(
+        extendBody: true,
         body: IndexedStack(
           index: _selectedIndex,
           children: screens,
         ),
-        bottomNavigationBar: _BottomNav(
+        bottomNavigationBar: _FloatingNavBar(
           selectedIndex: _selectedIndex,
           isLoggedIn: isLoggedIn,
           onTap: (i) => _onTabTapped(i, isLoggedIn),
@@ -81,12 +82,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BottomNav extends StatelessWidget {
+class _FloatingNavBar extends StatelessWidget {
   final int selectedIndex;
   final bool isLoggedIn;
   final ValueChanged<int> onTap;
 
-  const _BottomNav({
+  const _FloatingNavBar({
     required this.selectedIndex,
     required this.isLoggedIn,
     required this.onTap,
@@ -95,91 +96,131 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.menu_book_rounded,
-                label: 'Learn',
-                isSelected: selectedIndex == 0,
-                onTap: () => onTap(0),
-              ),
-              _NavItem(
-                icon: Icons.sports_esports_rounded,
-                label: 'Game',
-                isSelected: selectedIndex == 1,
-                isLocked: !isLoggedIn,
-                onTap: () => onTap(1),
-              ),
-              _NavItem(
-                icon: Icons.person_rounded,
-                label: 'Account',
-                isSelected: selectedIndex == 2,
-                isLocked: !isLoggedIn,
-                onTap: () => onTap(2),
-              ),
-            ],
-          ),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      decoration: const BoxDecoration(color: Colors.transparent),
+      child: Container(
+        height: 68,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(34),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _NavItem(
+              icon: Icons.menu_book_outlined,
+              activeIcon: Icons.menu_book_rounded,
+              label: 'Learn',
+              isActive: selectedIndex == 0,
+              onTap: () => onTap(0),
+            ),
+            _NavItem(
+              icon: Icons.sports_esports_outlined,
+              activeIcon: Icons.sports_esports_rounded,
+              label: 'Game',
+              isActive: selectedIndex == 1,
+              isLocked: !isLoggedIn,
+              onTap: () => onTap(1),
+            ),
+            _NavItem(
+              icon: Icons.person_outline_rounded,
+              activeIcon: Icons.person_rounded,
+              label: 'Account',
+              isActive: selectedIndex == 2,
+              isLocked: !isLoggedIn,
+              onTap: () => onTap(2),
+            ),
+          ],
         ),
       ),
-    );
+    ).animate().slideY(
+          begin: 1.0,
+          end: 0,
+          curve: Curves.easeOutQuint,
+          duration: 500.ms,
+        );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _NavItem extends StatelessWidget {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
-  final bool isSelected;
+  final bool isActive;
   final bool isLocked;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
+    required this.activeIcon,
     required this.label,
-    required this.isSelected,
+    required this.isActive,
     this.isLocked = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.primary : AppColors.textSecondary;
-
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(icon, color: color, size: 26),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isActive ? 18 : 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: isActive
+                        ? const LinearGradient(
+                            colors: [AppColors.primary, AppColors.primaryDark],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.35),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    isActive ? activeIcon : icon,
+                    color: isActive ? Colors.white : AppColors.textHint,
+                    size: 22,
+                  ),
+                ),
                 if (isLocked)
                   Positioned(
-                    right: -6,
+                    right: -4,
                     top: -4,
                     child: Container(
                       padding: const EdgeInsets.all(2),
@@ -196,15 +237,15 @@ class _NavItem extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
+            const SizedBox(height: 3),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
               style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                color: isActive ? AppColors.primary : AppColors.textHint,
               ),
+              child: Text(label),
             ),
           ],
         ),
@@ -213,8 +254,6 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Bottom sheet yêu cầu đăng nhập
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LoginRequiredSheet extends StatelessWidget {
