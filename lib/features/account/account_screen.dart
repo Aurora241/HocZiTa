@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/widgets/app_background.dart';
 import '../../data/datasources/local_datasource.dart';
 import '../auth/auth_providers.dart';
 import 'my_progress_screen.dart';
@@ -57,8 +59,6 @@ class AccountScreen extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Body chính
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _AccountBody extends ConsumerWidget {
   const _AccountBody({super.key});
@@ -72,71 +72,124 @@ class _AccountBody extends ConsumerWidget {
     if (user == null) return const SizedBox.shrink();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          const AppAuroraBackground(),
+          SingleChildScrollView(
         child: Column(
           children: [
-            // ── Header gradient ───────────────────────────────────────────
+            // ── Header gradient — trượt từ trên xuống ────────────────────
             _ProfileHeader(
               name: user.name,
               email: user.email,
               avatarPath: user.avatarPath,
               totalStars: statsAsync.valueOrNull?.totalStars ?? 0,
               onTapAvatar: () => _pickAvatar(context, ref, user.id),
-            ),
+            )
+                .animate()
+                .slideY(
+                  begin: -1,
+                  end: 0,
+                  duration: 500.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(duration: 400.ms),
 
             const SizedBox(height: 20),
 
-            // ── Thống kê ─────────────────────────────────────────────────
+            // ── Stats row — trượt từ trái sang ───────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _StatsRow(
                 totalStars: statsAsync.valueOrNull?.totalStars ?? 0,
                 gamesPlayed: statsAsync.valueOrNull?.gamesPlayed ?? 0,
               ),
-            ),
+            )
+                .animate()
+                .slideX(
+                  begin: -0.3,
+                  end: 0,
+                  delay: 150.ms,
+                  duration: 450.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(delay: 150.ms, duration: 400.ms),
 
             const SizedBox(height: 20),
 
-            // ── Menu items ───────────────────────────────────────────────
+            // ── Menu items — từng card trồi lên, stagger ─────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _MenuCard(
-                items: [
-                  _MenuItem(
-                    icon: Icons.emoji_events_rounded,
-                    label: 'Tiến độ của tôi',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const MyProgressScreen()),
-                    ),
-                  ),
-                  _MenuItem(
-                    icon: Icons.person_outline_rounded,
-                    label: 'Chỉnh sửa tên',
-                    onTap: () => _showEditName(context, ref, user.name),
-                  ),
-                  _MenuItem(
-                    icon: Icons.lock_outline_rounded,
-                    label: 'Đổi mật khẩu',
-                    onTap: () => _showChangePassword(context, ref, user.id),
-                    isLast: true,
-                  ),
-                ],
+              child: _MenuItemCard(
+                icon: Icons.emoji_events_rounded,
+                label: 'Tiến độ của tôi',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const MyProgressScreen()),
+                ),
               ),
-            ),
+            )
+                .animate()
+                .slideY(
+                  begin: 0.4,
+                  end: 0,
+                  delay: 250.ms,
+                  duration: 400.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(delay: 250.ms, duration: 350.ms),
+
+            const SizedBox(height: 12),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _MenuItemCard(
+                icon: Icons.person_outline_rounded,
+                label: 'Chỉnh sửa tên',
+                onTap: () => _showEditName(context, ref, user.name),
+              ),
+            )
+                .animate()
+                .slideY(
+                  begin: 0.4,
+                  end: 0,
+                  delay: 330.ms,
+                  duration: 400.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(delay: 330.ms, duration: 350.ms),
+
+            const SizedBox(height: 12),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _MenuItemCard(
+                icon: Icons.lock_outline_rounded,
+                label: 'Đổi mật khẩu',
+                onTap: () => _showChangePassword(context, ref, user.id),
+              ),
+            )
+                .animate()
+                .slideY(
+                  begin: 0.4,
+                  end: 0,
+                  delay: 410.ms,
+                  duration: 400.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(delay: 410.ms, duration: 350.ms),
 
             const SizedBox(height: 24),
 
-            // ── Đăng xuất ────────────────────────────────────────────────
+            // ── Đăng xuất — trượt từ phải sang ───────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  icon: const Icon(Icons.logout_rounded,
-                      color: AppColors.error),
+                  icon: const Icon(Icons.logout_rounded, color: AppColors.error),
                   label: const Text(
                     'Đăng xuất',
                     style: TextStyle(color: AppColors.error),
@@ -151,16 +204,26 @@ class _AccountBody extends ConsumerWidget {
                   onPressed: () => _logout(context, ref),
                 ),
               ),
-            ),
+            )
+                .animate()
+                .slideX(
+                  begin: 0.3,
+                  end: 0,
+                  delay: 500.ms,
+                  duration: 400.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(delay: 500.ms, duration: 350.ms),
 
-            const SizedBox(height: 32),
+            // Padding để nội dung không bị floating nav bar che
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 100),
           ],
         ),
+          ),
+        ],
       ),
     );
   }
-
-  // ── Avatar picker ─────────────────────────────────────────────────────────
 
   Future<void> _pickAvatar(
       BuildContext context, WidgetRef ref, String userId) async {
@@ -186,10 +249,7 @@ class _AccountBody extends ConsumerWidget {
     ref.invalidate(currentUserProvider);
   }
 
-  // ── Edit name sheet ───────────────────────────────────────────────────────
-
-  void _showEditName(
-      BuildContext context, WidgetRef ref, String currentName) {
+  void _showEditName(BuildContext context, WidgetRef ref, String currentName) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -209,8 +269,6 @@ class _AccountBody extends ConsumerWidget {
       ),
     );
   }
-
-  // ── Change password sheet ─────────────────────────────────────────────────
 
   void _showChangePassword(
       BuildContext context, WidgetRef ref, String userId) {
@@ -232,14 +290,11 @@ class _AccountBody extends ConsumerWidget {
     );
   }
 
-  // ── Logout ────────────────────────────────────────────────────────────────
-
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Đăng xuất'),
         content: const Text('Bạn có chắc muốn đăng xuất không?'),
         actions: [
@@ -295,11 +350,17 @@ class _ProfileHeader extends StatelessWidget {
           colors: [Color(0xFF0077BB), Color(0xFF00AADD)],
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x330077BB),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       padding: EdgeInsets.fromLTRB(24, topPad + 20, 24, 32),
       child: Column(
         children: [
-          // Avatar
           GestureDetector(
             onTap: onTapAvatar,
             child: Stack(
@@ -312,9 +373,7 @@ class _ProfileHeader extends StatelessWidget {
                       : null,
                   child: avatarPath == null
                       ? Text(
-                          name.isNotEmpty
-                              ? name[0].toUpperCase()
-                              : '?',
+                          name.isNotEmpty ? name[0].toUpperCase() : '?',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 36,
@@ -361,10 +420,8 @@ class _ProfileHeader extends StatelessWidget {
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 12),
-          // Tổng sao badge
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
@@ -372,8 +429,7 @@ class _ProfileHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star_rounded,
-                    color: AppColors.star, size: 18),
+                const Icon(Icons.star_rounded, color: AppColors.star, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   '$totalStars sao tổng cộng',
@@ -480,83 +536,70 @@ class _StatCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Menu card
+// Menu item card — mỗi item là 1 card riêng có shadow
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _MenuCard extends StatelessWidget {
-  final List<_MenuItem> items;
-  const _MenuCard({required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: items
-            .map((item) => _MenuItemTile(item: item))
-            .toList(),
-      ),
-    );
-  }
-}
-
-class _MenuItem {
+class _MenuItemCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final bool isLast;
 
-  const _MenuItem({
+  const _MenuItemCard({
     required this.icon,
     required this.label,
     required this.onTap,
-    this.isLast = false,
   });
-}
-
-class _MenuItemTile extends StatelessWidget {
-  final _MenuItem item;
-  const _MenuItemTile({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(item.icon, color: AppColors.primary, size: 20),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          title: Text(
-            item.label,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded,
+                    size: 15, color: AppColors.textSecondary),
+              ],
             ),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios_rounded,
-              size: 15, color: AppColors.textSecondary),
-          onTap: item.onTap,
         ),
-        if (!item.isLast)
-          const Divider(height: 1, indent: 68, endIndent: 16),
-      ],
+      ),
     );
   }
 }
@@ -576,7 +619,8 @@ class _AvatarSourceSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
               color: Colors.grey[300],
               borderRadius: BorderRadius.circular(2),
@@ -598,8 +642,7 @@ class _AvatarSourceSheet extends StatelessWidget {
                   icon: Icons.photo_library_rounded,
                   label: 'Thư viện',
                   color: AppColors.primary,
-                  onTap: () =>
-                      Navigator.pop(context, ImageSource.gallery),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
                 ),
               ),
               const SizedBox(width: 12),
@@ -608,8 +651,7 @@ class _AvatarSourceSheet extends StatelessWidget {
                   icon: Icons.camera_alt_rounded,
                   label: 'Chụp ảnh',
                   color: const Color(0xFF7C3AED),
-                  onTap: () =>
-                      Navigator.pop(context, ImageSource.camera),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
                 ),
               ),
             ],
@@ -733,7 +775,8 @@ class _EditNameSheetState extends State<_EditNameSheet> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
@@ -830,8 +873,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
 
-    final error =
-        await widget.onSave(_oldCtrl.text, _newCtrl.text);
+    final error = await widget.onSave(_oldCtrl.text, _newCtrl.text);
 
     setState(() => _loading = false);
 
@@ -867,7 +909,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
@@ -886,8 +929,6 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Mật khẩu cũ
             TextFormField(
               controller: _oldCtrl,
               obscureText: _obscureOld,
@@ -899,16 +940,13 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   icon: Icon(_obscureOld
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined),
-                  onPressed: () =>
-                      setState(() => _obscureOld = !_obscureOld),
+                  onPressed: () => setState(() => _obscureOld = !_obscureOld),
                 ),
               ),
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'Vui lòng nhập mật khẩu cũ' : null,
             ),
             const SizedBox(height: 12),
-
-            // Mật khẩu mới
             TextFormField(
               controller: _newCtrl,
               obscureText: _obscureNew,
@@ -920,8 +958,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   icon: Icon(_obscureNew
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined),
-                  onPressed: () =>
-                      setState(() => _obscureNew = !_obscureNew),
+                  onPressed: () => setState(() => _obscureNew = !_obscureNew),
                 ),
               ),
               validator: (v) {
@@ -932,8 +969,6 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
               },
             ),
             const SizedBox(height: 12),
-
-            // Xác nhận
             TextFormField(
               controller: _confirmCtrl,
               obscureText: _obscureConfirm,
@@ -956,8 +991,6 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 return null;
               },
             ),
-
-            // Error
             if (_errorMsg != null) ...[
               const SizedBox(height: 10),
               Row(
@@ -975,7 +1008,6 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 ],
               ),
             ],
-
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,

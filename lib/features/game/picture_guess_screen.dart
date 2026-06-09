@@ -318,33 +318,57 @@ class _PictureGuessScreenState
               ),
             ),
 
-            // ── Icon card ──────────────────────────────────────────────
+            // ── Picture card ───────────────────────────────────────────
             Expanded(
               child: Center(
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0077BB), Color(0xFF00AADD)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
+                child: word.emoji != null
+                    // Emoji từ Supabase — hiện trên nền trắng bo tròn
+                    ? Container(
+                        width: 160,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.18),
+                              blurRadius: 24,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            word.emoji!,
+                            style: const TextStyle(fontSize: 88),
+                          ),
+                        ),
+                      )
+                    // Fallback — Material Icon (khi chưa có emoji)
+                    : Container(
+                        width: 160,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF0077BB), Color(0xFF00AADD)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 24,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _iconFor(word.word),
+                          color: Colors.white,
+                          size: 80,
+                        ),
                       ),
-                    ],
-                  ),
-                  child: Icon(
-                    _iconFor(word.word),
-                    color: Colors.white,
-                    size: 80,
-                  ),
-                ),
               ),
             ),
 

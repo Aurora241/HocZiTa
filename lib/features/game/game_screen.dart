@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/widgets/app_background.dart';
 import 'game_list_screen.dart';
 import 'leaderboard_screen.dart';
 
@@ -9,12 +11,23 @@ class GameScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _Header(),
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          const AppAuroraBackground(),
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            const _Header()
+                .animate()
+                .slideY(
+                  begin: -1,
+                  end: 0,
+                  duration: 500.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(duration: 400.ms),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
@@ -44,6 +57,7 @@ class GameScreen extends StatelessWidget {
                           endColor: const Color(0xFF00AADD),
                           title: 'Foreign Language',
                           subtitle: '3 games',
+                          animationDelay: 150.ms,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -58,6 +72,7 @@ class GameScreen extends StatelessWidget {
                           endColor: const Color(0xFF9F67FA),
                           title: 'Toán học',
                           subtitle: '3 games',
+                          animationDelay: 250.ms,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -74,13 +89,13 @@ class GameScreen extends StatelessWidget {
             ),
           ],
         ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Header
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
@@ -163,8 +178,6 @@ class _Header extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Category card — kích thước do GridView.count kiểm soát qua childAspectRatio
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _CategoryCard extends StatelessWidget {
   final IconData icon;
@@ -172,6 +185,7 @@ class _CategoryCard extends StatelessWidget {
   final Color endColor;
   final String title;
   final String subtitle;
+  final Duration animationDelay;
   final VoidCallback onTap;
 
   const _CategoryCard({
@@ -180,6 +194,7 @@ class _CategoryCard extends StatelessWidget {
     required this.endColor,
     required this.title,
     required this.subtitle,
+    required this.animationDelay,
     required this.onTap,
   });
 
@@ -267,6 +282,15 @@ class _CategoryCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    )
+        .animate()
+        .slideX(
+          begin: -0.3,
+          end: 0,
+          delay: animationDelay,
+          duration: 450.ms,
+          curve: Curves.easeOutCubic,
+        )
+        .fadeIn(delay: animationDelay, duration: 400.ms);
   }
 }

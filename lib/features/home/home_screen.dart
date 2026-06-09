@@ -15,20 +15,44 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnimation;
 
-  final List<Widget> screens = const [
+  static const List<Widget> _screens = [
     LearnScreen(),
     GameScreen(),
     AccountScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 220),
+      vsync: this,
+    )..forward();
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
 
   void _onTabTapped(int index, bool isLoggedIn) {
     if (index != 0 && !isLoggedIn) {
       _showLoginRequired(index);
       return;
     }
+    if (index == _selectedIndex) return;
+    _fadeController.forward(from: 0);
     setState(() => _selectedIndex = index);
   }
 
@@ -66,14 +90,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       data: (isLoggedIn) => Scaffold(
         extendBody: true,
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: screens,
+        body: RepaintBoundary(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: KeyedSubtree(
+              key: ValueKey(_selectedIndex),
+              child: _screens[_selectedIndex],
+            ),
+          ),
         ),
-        bottomNavigationBar: _FloatingNavBar(
-          selectedIndex: _selectedIndex,
-          isLoggedIn: isLoggedIn,
-          onTap: (i) => _onTabTapped(i, isLoggedIn),
+        bottomNavigationBar: RepaintBoundary(
+          child: _FloatingNavBar(
+            selectedIndex: _selectedIndex,
+            isLoggedIn: isLoggedIn,
+            onTap: (i) => _onTabTapped(i, isLoggedIn),
+          ),
         ),
       ),
     );
@@ -99,7 +130,6 @@ class _FloatingNavBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
       decoration: const BoxDecoration(color: Colors.transparent),
       child: Container(
-        height: 68,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(34),

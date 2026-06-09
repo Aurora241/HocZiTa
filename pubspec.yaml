@@ -53,6 +53,10 @@ dependencies:
 
   # Animation helpers
   flutter_animate: ^4.5.0
+  confetti: ^0.7.0
+
+  # Supabase
+  supabase_flutter: ^2.8.4
 
 dev_dependencies:
   flutter_test:

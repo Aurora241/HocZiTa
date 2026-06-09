@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/widgets/app_background.dart';
 import '../auth/auth_providers.dart';
 import 'learn_list_screen.dart';
 
@@ -17,12 +19,23 @@ class LearnScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Header(userName: userName),
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          const AppAuroraBackground(),
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            _Header(userName: userName)
+                .animate()
+                .slideY(
+                  begin: -1,
+                  end: 0,
+                  duration: 500.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(duration: 400.ms),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
@@ -52,11 +65,12 @@ class LearnScreen extends ConsumerWidget {
                           endColor: const Color(0xFF00AADD),
                           title: 'Foreign Language',
                           subtitle: '15 từ / cấp',
+                          animationDelay: 150.ms,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const LearnListScreen(
-                                  category: 'language'),
+                              builder: (_) =>
+                                  const LearnListScreen(category: 'language'),
                             ),
                           ),
                         ),
@@ -66,6 +80,7 @@ class LearnScreen extends ConsumerWidget {
                           endColor: const Color(0xFF9F67FA),
                           title: 'Toán học',
                           subtitle: '2 loại bài tập',
+                          animationDelay: 250.ms,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -82,13 +97,13 @@ class LearnScreen extends ConsumerWidget {
             ),
           ],
         ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Header
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
@@ -145,8 +160,6 @@ class _Header extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Category card — kích thước do GridView.count kiểm soát qua childAspectRatio
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _CategoryCard extends StatelessWidget {
   final IconData icon;
@@ -154,6 +167,7 @@ class _CategoryCard extends StatelessWidget {
   final Color endColor;
   final String title;
   final String subtitle;
+  final Duration animationDelay;
   final VoidCallback onTap;
 
   const _CategoryCard({
@@ -162,6 +176,7 @@ class _CategoryCard extends StatelessWidget {
     required this.endColor,
     required this.title,
     required this.subtitle,
+    required this.animationDelay,
     required this.onTap,
   });
 
@@ -249,6 +264,15 @@ class _CategoryCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    )
+        .animate()
+        .slideX(
+          begin: -0.3,
+          end: 0,
+          delay: animationDelay,
+          duration: 450.ms,
+          curve: Curves.easeOutCubic,
+        )
+        .fadeIn(delay: animationDelay, duration: 400.ms);
   }
 }

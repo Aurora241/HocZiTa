@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/datasources/local_datasource.dart';
 import '../../data/models/word_model.dart';
+import '../auth/register_screen.dart';
 
 class WordPracticeScreen extends StatefulWidget {
-  final String level; // 'a' | 'b' | 'c'
-  const WordPracticeScreen({super.key, required this.level});
+  const WordPracticeScreen({super.key});
 
   @override
   State<WordPracticeScreen> createState() => _WordPracticeScreenState();
@@ -29,7 +29,7 @@ class _WordPracticeScreenState extends State<WordPracticeScreen> {
   }
 
   Future<void> _load() async {
-    final words = await _ds.getWords(widget.level);
+    final words = await _ds.getAllWords();
     final rng = Random();
     final questions = words.map((w) {
       // 3 đáp án sai lấy ngẫu nhiên từ các từ khác
@@ -76,12 +76,10 @@ class _WordPracticeScreenState extends State<WordPracticeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final levelLabel = widget.level.toUpperCase();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Foreign Language  •  Cấp $levelLabel'),
+        title: const Text('Foreign Language'),
         leading: const BackButton(),
       ),
       body: _loading
@@ -244,43 +242,12 @@ class _ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Câu $current / $total',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                '${((current / total) * 100).round()}%',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: current / total,
-              minHeight: 6,
-              backgroundColor: AppColors.divider,
-              color: AppColors.primary,
-            ),
-          ),
-        ],
+    return ClipRRect(
+      child: LinearProgressIndicator(
+        value: current / total,
+        minHeight: 5,
+        backgroundColor: AppColors.divider,
+        color: AppColors.primary,
       ),
     );
   }
@@ -441,12 +408,65 @@ class _SummaryView extends StatelessWidget {
                 color: AppColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
+            // CTA đăng ký
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0077BB), Color(0xFF00AADD)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    '🌟 Thích học rồi?',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Đăng ký để chơi game, kiếm sao\nvà leo bảng xếp hạng!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const RegisterScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF0077BB),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                      child: const Text('Đăng ký miễn phí',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Làm lại'),
+                label: const Text('Học tiếp'),
                 onPressed: onRestart,
               ),
             ),

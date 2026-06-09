@@ -1,21 +1,30 @@
 import '../datasources/local_datasource.dart';
+import '../datasources/content_datasource.dart';
 import '../models/word_model.dart';
 import '../models/score_model.dart';
 export '../models/score_model.dart' show LeaderboardEntry;
 
 class GameRepository {
+  /// Nguồn nội dung: có thể là LocalDataSource hoặc SupabaseDataSource
+  final ContentDataSource _content;
+
+  /// Luôn dùng local cho scores / auth (không sync cloud ở giai đoạn này)
   final LocalDataSource _local;
 
-  GameRepository(this._local);
+  GameRepository({
+    required ContentDataSource content,
+    required LocalDataSource local,
+  })  : _content = content,
+        _local = local;
 
   // ─── Lấy dữ liệu game ──────────────────────────────────────────────────────
 
   Future<List<WordModel>> getWordsForGame(String level) =>
-      _local.getWords(level);
+      _content.getWords(level);
 
   Future<List<MathQuestionModel>> getMathQuestions(
           String type, String level) =>
-      _local.getMathQuestions(type, level);
+      _content.getMathQuestions(type, level);
 
   // ─── Lưu điểm ──────────────────────────────────────────────────────────────
 

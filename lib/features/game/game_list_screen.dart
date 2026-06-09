@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/widgets/app_background.dart';
 import 'flashcard_speed_run_screen.dart';
 import 'memory_match_screen.dart';
 import 'picture_guess_screen.dart';
@@ -65,23 +67,35 @@ class GameListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          const AppAuroraBackground(),
+          SafeArea(
+            child: Column(
+              children: [
             _Header(
               title: _title,
               startColor: _startColor,
               endColor: _endColor,
-            ),
+            )
+                .animate()
+                .slideY(
+                  begin: -1,
+                  end: 0,
+                  duration: 500.ms,
+                  curve: Curves.easeOutCubic,
+                )
+                .fadeIn(duration: 400.ms),
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 itemCount: _items.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, i) => _GameCard(
                   item: _items[i],
                   color: _startColor,
+                  animationDelay: Duration(milliseconds: 150 + i * 80),
                   onSelect: (level) => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -92,7 +106,9 @@ class GameListScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -114,8 +130,6 @@ class _GameItem {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Header với back button
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
@@ -139,8 +153,7 @@ class _Header extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [startColor, endColor],
         ),
-        borderRadius:
-            const BorderRadius.vertical(bottom: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(8, 12, 24, 24),
       child: Row(
@@ -175,17 +188,17 @@ class _Header extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Game card
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _GameCard extends StatelessWidget {
   final _GameItem item;
   final Color color;
+  final Duration animationDelay;
   final void Function(String level) onSelect;
 
   const _GameCard({
     required this.item,
     required this.color,
+    required this.animationDelay,
     required this.onSelect,
   });
 
@@ -213,9 +226,9 @@ class _GameCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: color.withValues(alpha: 0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -255,8 +268,8 @@ class _GameCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -279,12 +292,19 @@ class _GameCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    )
+        .animate()
+        .slideX(
+          begin: -0.3,
+          end: 0,
+          delay: animationDelay,
+          duration: 450.ms,
+          curve: Curves.easeOutCubic,
+        )
+        .fadeIn(delay: animationDelay, duration: 400.ms);
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Level picker sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LevelPickerSheet extends StatelessWidget {
@@ -332,30 +352,21 @@ class _LevelPickerSheet extends StatelessWidget {
             level: 'A',
             label: 'Cấp A  —  Cơ bản',
             color: AppColors.levelA,
-            onTap: () {
-              Navigator.pop(context);
-              onSelect('a');
-            },
+            onTap: () { Navigator.pop(context); onSelect('a'); },
           ),
           const SizedBox(height: 12),
           _LevelBtn(
             level: 'B',
             label: 'Cấp B  —  Trung cấp',
             color: AppColors.levelB,
-            onTap: () {
-              Navigator.pop(context);
-              onSelect('b');
-            },
+            onTap: () { Navigator.pop(context); onSelect('b'); },
           ),
           const SizedBox(height: 12),
           _LevelBtn(
             level: 'C',
             label: 'Cấp C  —  Nâng cao',
             color: AppColors.levelC,
-            onTap: () {
-              Navigator.pop(context);
-              onSelect('c');
-            },
+            onTap: () { Navigator.pop(context); onSelect('c'); },
           ),
         ],
       ),
@@ -386,8 +397,8 @@ class _LevelBtn extends StatelessWidget {
           backgroundColor: color,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 0,
         ),
         child: Row(

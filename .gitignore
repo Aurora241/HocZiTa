@@ -1,6 +1,9 @@
 # Claude AI
 .claude/
 
+# Supabase credentials — không commit lên git
+lib/core/config/supabase_config.dart
+
 # Flutter metadata
 .metadata
 

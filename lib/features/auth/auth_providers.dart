@@ -1,15 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/local_datasource.dart';
+import '../../data/datasources/cached_content_datasource.dart';
+import '../../data/datasources/content_datasource.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/game_repository.dart';
+
+/// Supabase + cache 24h + fallback offline.
+/// Đổi thành LocalDataSource() nếu muốn dùng JSON local hoàn toàn.
+final contentDataSourceProvider = Provider<ContentDataSource>((ref) {
+  return CachedContentDataSource();
+});
 
 final authRepoProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(LocalDataSource());
 });
 
 final gameRepoProvider = Provider<GameRepository>((ref) {
-  return GameRepository(LocalDataSource());
+  return GameRepository(
+    content: ref.watch(contentDataSourceProvider),
+    local: LocalDataSource(),
+  );
 });
 
 /// Nguồn sự thật duy nhất cho trạng thái đăng nhập — dùng ở HomeScreen,

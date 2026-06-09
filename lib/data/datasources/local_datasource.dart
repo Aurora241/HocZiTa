@@ -5,12 +5,14 @@ import '../models/word_model.dart';
 import '../models/user_model.dart';
 import '../models/score_model.dart';
 import '../../core/constants/app_constants.dart';
+import 'content_datasource.dart';
 
-/// LocalDataSource: Nguồn dữ liệu local
-/// Sau này chỉ cần tạo ApiDataSource với interface tương tự là swap được
-class LocalDataSource {
+/// LocalDataSource: Nguồn dữ liệu local (JSON bundle + SharedPreferences)
+/// Dùng cho auth, scores, và content khi offline / chưa có Supabase.
+class LocalDataSource implements ContentDataSource {
   // ─── WORDS (Foreign Language) ─────────────────────────────────────────────
 
+  @override
   Future<List<WordModel>> getWords(String level) async {
     final String path =
         '${AppConstants.pathForeignLanguage}/level_${level.toLowerCase()}.json';
@@ -19,8 +21,20 @@ class LocalDataSource {
     return list.map((e) => WordModel.fromJson(e)).toList();
   }
 
+  /// Gộp toàn bộ từ vựng 3 cấp (a, b, c) thành một pool dùng cho Learn
+  @override
+  Future<List<WordModel>> getAllWords() async {
+    final results = await Future.wait([
+      getWords('a'),
+      getWords('b'),
+      getWords('c'),
+    ]);
+    return results.expand((list) => list).toList();
+  }
+
   // ─── MATH QUESTIONS ────────────────────────────────────────────────────────
 
+  @override
   Future<List<MathQuestionModel>> getMathQuestions(
       String type, String level) async {
     final String path =
@@ -31,6 +45,17 @@ class LocalDataSource {
         .map((e) => MathQuestionModel.fromJson(e))
         .where((q) => q.type == type)
         .toList();
+  }
+
+  /// Gộp toàn bộ câu hỏi toán 3 cấp (a, b, c) thành một pool dùng cho Learn
+  @override
+  Future<List<MathQuestionModel>> getAllMathQuestions(String type) async {
+    final results = await Future.wait([
+      getMathQuestions(type, 'a'),
+      getMathQuestions(type, 'b'),
+      getMathQuestions(type, 'c'),
+    ]);
+    return results.expand((list) => list).toList();
   }
 
   // ─── AUTH ──────────────────────────────────────────────────────────────────

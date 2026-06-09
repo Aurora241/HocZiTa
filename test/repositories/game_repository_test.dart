@@ -6,7 +6,8 @@ void main() {
   late GameRepository repo;
 
   setUp(() {
-    repo = GameRepository(LocalDataSource());
+    final local = LocalDataSource();
+    repo = GameRepository(content: local, local: local);
   });
 
   group('calculateStars — game thông thường (40s / 20s)', () {
