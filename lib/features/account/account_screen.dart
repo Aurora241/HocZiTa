@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_background.dart';
 import '../../data/datasources/local_datasource.dart';
+import '../../data/models/nks_user_model.dart';
 import '../auth/auth_providers.dart';
 import 'my_progress_screen.dart';
 
@@ -13,12 +15,23 @@ import 'my_progress_screen.dart';
 
 final _statsProvider = FutureProvider.autoDispose<_Stats>((ref) async {
   ref.watch(scoreVersionProvider);
-  final user = await ref.watch(currentUserProvider.future);
-  if (user == null) return const _Stats(totalStars: 0, gamesPlayed: 0);
+
+  // Ưu tiên NKS user
+  final nksUser = ref.watch(currentNKSUserProvider);
+  final userId =
+      nksUser != null ? nksUser.id.toString() : null;
+
+  // Fallback local user
+  final localUserId = userId ??
+      (await ref.watch(currentUserProvider.future))?.id;
+
+  if (localUserId == null) return const _Stats(totalStars: 0, gamesPlayed: 0);
+
   final ds = LocalDataSource();
-  final totalStars = await ds.getTotalStarsByUser(user.id);
+  final totalStars = await ds.getTotalStarsByUser(localUserId);
   final allScores = await ds.getAllScores();
-  final gamesPlayed = allScores.where((s) => s.userId == user.id).length;
+  final gamesPlayed =
+      allScores.where((s) => s.userId == localUserId).length;
   return _Stats(totalStars: totalStars, gamesPlayed: gamesPlayed);
 });
 
@@ -35,8 +48,14 @@ class AccountScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userAsync = ref.watch(currentUserProvider);
+    final nksUser = ref.watch(currentNKSUserProvider);
 
+    if (nksUser != null) {
+      return _AccountBody(key: ValueKey('${nksUser.id}_${nksUser.avatar}'));
+    }
+
+    // Fallback: local auth (tài khoản cũ trước khi tích hợp NKS)
+    final userAsync = ref.watch(currentUserProvider);
     return userAsync.when(
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -65,11 +84,15 @@ class _AccountBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userAsync = ref.watch(currentUserProvider);
+    final nksUser = ref.watch(currentNKSUserProvider);
     final statsAsync = ref.watch(_statsProvider);
 
-    final user = userAsync.valueOrNull;
-    if (user == null) return const SizedBox.shrink();
+    // Lấy thông tin hiển thị — ưu tiên NKS, fallback local
+    final localUser = ref.watch(currentUserProvider).valueOrNull;
+    final displayName = nksUser?.displayName ?? localUser?.name ?? '';
+    final displayEmail = nksUser?.email ?? localUser?.email ?? '';
+    final avatarUrl = nksUser?.avatar;
+    final avatarPath = (nksUser == null) ? localUser?.avatarPath : null;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -77,156 +100,151 @@ class _AccountBody extends ConsumerWidget {
         children: [
           const AppAuroraBackground(),
           SingleChildScrollView(
-        child: Column(
-          children: [
-            // ── Header gradient — trượt từ trên xuống ────────────────────
-            _ProfileHeader(
-              name: user.name,
-              email: user.email,
-              avatarPath: user.avatarPath,
-              totalStars: statsAsync.valueOrNull?.totalStars ?? 0,
-              onTapAvatar: () => _pickAvatar(context, ref, user.id),
-            )
-                .animate()
-                .slideY(
-                  begin: -1,
-                  end: 0,
-                  duration: 500.ms,
-                  curve: Curves.easeOutCubic,
+            child: Column(
+              children: [
+                // ── Header ───────────────────────────────────────────────
+                _ProfileHeader(
+                  name: displayName,
+                  email: displayEmail,
+                  avatarUrl: avatarUrl,
+                  avatarPath: avatarPath,
+                  totalStars: statsAsync.valueOrNull?.totalStars ?? 0,
+                  onTapAvatar: () => _pickAvatar(context, ref, nksUser),
                 )
-                .fadeIn(duration: 400.ms),
+                    .animate()
+                    .slideY(
+                      begin: -1,
+                      end: 0,
+                      duration: 500.ms,
+                      curve: Curves.easeOutCubic,
+                    )
+                    .fadeIn(duration: 400.ms),
 
-            const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-            // ── Stats row — trượt từ trái sang ───────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _StatsRow(
-                totalStars: statsAsync.valueOrNull?.totalStars ?? 0,
-                gamesPlayed: statsAsync.valueOrNull?.gamesPlayed ?? 0,
-              ),
-            )
-                .animate()
-                .slideX(
-                  begin: -0.3,
-                  end: 0,
-                  delay: 150.ms,
-                  duration: 450.ms,
-                  curve: Curves.easeOutCubic,
-                )
-                .fadeIn(delay: 150.ms, duration: 400.ms),
-
-            const SizedBox(height: 20),
-
-            // ── Menu items — từng card trồi lên, stagger ─────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _MenuItemCard(
-                icon: Icons.emoji_events_rounded,
-                label: 'Tiến độ của tôi',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const MyProgressScreen()),
-                ),
-              ),
-            )
-                .animate()
-                .slideY(
-                  begin: 0.4,
-                  end: 0,
-                  delay: 250.ms,
-                  duration: 400.ms,
-                  curve: Curves.easeOutCubic,
-                )
-                .fadeIn(delay: 250.ms, duration: 350.ms),
-
-            const SizedBox(height: 12),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _MenuItemCard(
-                icon: Icons.person_outline_rounded,
-                label: 'Chỉnh sửa tên',
-                onTap: () => _showEditName(context, ref, user.name),
-              ),
-            )
-                .animate()
-                .slideY(
-                  begin: 0.4,
-                  end: 0,
-                  delay: 330.ms,
-                  duration: 400.ms,
-                  curve: Curves.easeOutCubic,
-                )
-                .fadeIn(delay: 330.ms, duration: 350.ms),
-
-            const SizedBox(height: 12),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _MenuItemCard(
-                icon: Icons.lock_outline_rounded,
-                label: 'Đổi mật khẩu',
-                onTap: () => _showChangePassword(context, ref, user.id),
-              ),
-            )
-                .animate()
-                .slideY(
-                  begin: 0.4,
-                  end: 0,
-                  delay: 410.ms,
-                  duration: 400.ms,
-                  curve: Curves.easeOutCubic,
-                )
-                .fadeIn(delay: 410.ms, duration: 350.ms),
-
-            const SizedBox(height: 24),
-
-            // ── Đăng xuất — trượt từ phải sang ───────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                  label: const Text(
-                    'Đăng xuất',
-                    style: TextStyle(color: AppColors.error),
+                // ── Stats row ─────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _StatsRow(
+                    totalStars: statsAsync.valueOrNull?.totalStars ?? 0,
+                    gamesPlayed: statsAsync.valueOrNull?.gamesPlayed ?? 0,
                   ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.error),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                )
+                    .animate()
+                    .slideX(
+                      begin: -0.3,
+                      end: 0,
+                      delay: 150.ms,
+                      duration: 450.ms,
+                      curve: Curves.easeOutCubic,
+                    )
+                    .fadeIn(delay: 150.ms, duration: 400.ms),
+
+                const SizedBox(height: 20),
+
+                // ── Menu items ────────────────────────────────────────────
+                ..._buildMenuItems(context, ref, nksUser, localUser?.id),
+                const SizedBox(height: 24),
+
+                // ── Đăng xuất ─────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.logout_rounded,
+                          color: AppColors.error),
+                      label: const Text(
+                        'Đăng xuất',
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.error),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => _logout(context, ref),
                     ),
                   ),
-                  onPressed: () => _logout(context, ref),
-                ),
-              ),
-            )
-                .animate()
-                .slideX(
-                  begin: 0.3,
-                  end: 0,
-                  delay: 500.ms,
-                  duration: 400.ms,
-                  curve: Curves.easeOutCubic,
                 )
-                .fadeIn(delay: 500.ms, duration: 350.ms),
+                    .animate()
+                    .slideX(
+                      begin: 0.3,
+                      end: 0,
+                      delay: 500.ms,
+                      duration: 400.ms,
+                      curve: Curves.easeOutCubic,
+                    )
+                    .fadeIn(delay: 500.ms, duration: 350.ms),
 
-            // Padding để nội dung không bị floating nav bar che
-            SizedBox(height: MediaQuery.of(context).padding.bottom + 100),
-          ],
-        ),
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 100),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  List<Widget> _buildMenuItems(
+    BuildContext context,
+    WidgetRef ref,
+    NKSUserModel? nksUser,
+    String? localUserId,
+  ) {
+    final items = [
+      _MenuItem(
+        icon: Icons.emoji_events_rounded,
+        label: 'Tiến độ của tôi',
+        delay: 250,
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const MyProgressScreen())),
+      ),
+      _MenuItem(
+        icon: Icons.person_outline_rounded,
+        label: 'Chỉnh sửa tên',
+        delay: 330,
+        onTap: () => _showEditName(context, ref, nksUser),
+      ),
+      _MenuItem(
+        icon: Icons.lock_outline_rounded,
+        label: 'Đổi mật khẩu',
+        delay: 410,
+        onTap: () => _showChangePassword(context, ref, nksUser, localUserId),
+      ),
+    ];
+
+    return items.asMap().entries.map((e) {
+      final item = e.value;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        child: _MenuItemCard(
+          icon: item.icon,
+          label: item.label,
+          onTap: item.onTap,
+        )
+            .animate()
+            .slideY(
+              begin: 0.4,
+              end: 0,
+              delay: Duration(milliseconds: item.delay),
+              duration: 400.ms,
+              curve: Curves.easeOutCubic,
+            )
+            .fadeIn(
+              delay: Duration(milliseconds: item.delay),
+              duration: 350.ms,
+            ),
+      );
+    }).toList();
+  }
+
+  // ── Actions ──────────────────────────────────────────────────────────────
+
   Future<void> _pickAvatar(
-      BuildContext context, WidgetRef ref, String userId) async {
+      BuildContext context, WidgetRef ref, NKSUserModel? nksUser) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -244,12 +262,47 @@ class _AccountBody extends ConsumerWidget {
     );
     if (picked == null) return;
 
-    final repo = ref.read(authRepoProvider);
-    await repo.updateProfile(userId: userId, avatarPath: picked.path);
-    ref.invalidate(currentUserProvider);
+    if (nksUser?.accessToken != null) {
+      // NKS: upload Base64
+      final bytes = await File(picked.path).readAsBytes();
+      final base64Image = base64Encode(bytes);
+      try {
+        final updated = await ref.read(nksApiServiceProvider).updateAvatar(
+              token: nksUser!.accessToken!,
+              base64Image: base64Image,
+            );
+        ref.read(nksAuthProvider.notifier).updateUser(updated);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Đã cập nhật ảnh đại diện'),
+            backgroundColor: AppColors.success,
+          ));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.error,
+          ));
+        }
+      }
+    } else {
+      // Fallback: lưu local
+      final user = ref.read(currentUserProvider).valueOrNull;
+      if (user == null) return;
+      await ref
+          .read(authRepoProvider)
+          .updateProfile(userId: user.id, avatarPath: picked.path);
+      ref.invalidate(currentUserProvider);
+    }
   }
 
-  void _showEditName(BuildContext context, WidgetRef ref, String currentName) {
+  void _showEditName(
+      BuildContext context, WidgetRef ref, NKSUserModel? nksUser) {
+    final currentName = nksUser?.displayName ??
+        ref.read(currentUserProvider).valueOrNull?.name ??
+        '';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -259,19 +312,34 @@ class _AccountBody extends ConsumerWidget {
       builder: (_) => _EditNameSheet(
         currentName: currentName,
         onSave: (newName) async {
-          final user = ref.read(currentUserProvider).valueOrNull;
-          if (user == null) return;
-          await ref
-              .read(authRepoProvider)
-              .updateProfile(userId: user.id, name: newName);
-          ref.invalidate(currentUserProvider);
+          if (nksUser?.accessToken != null) {
+            // Tách họ và tên: từ đầu = họ, phần còn lại = tên
+            final parts = newName.trim().split(' ');
+            final lastname = parts.first;
+            final firstname =
+                parts.length > 1 ? parts.sublist(1).join(' ') : '';
+            final updated =
+                await ref.read(nksApiServiceProvider).updateInfo(
+                      token: nksUser!.accessToken!,
+                      firstname: firstname,
+                      lastname: lastname,
+                    );
+            ref.read(nksAuthProvider.notifier).updateUser(updated);
+          } else {
+            final user = ref.read(currentUserProvider).valueOrNull;
+            if (user == null) return;
+            await ref
+                .read(authRepoProvider)
+                .updateProfile(userId: user.id, name: newName);
+            ref.invalidate(currentUserProvider);
+          }
         },
       ),
     );
   }
 
-  void _showChangePassword(
-      BuildContext context, WidgetRef ref, String userId) {
+  void _showChangePassword(BuildContext context, WidgetRef ref,
+      NKSUserModel? nksUser, String? localUserId) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -280,11 +348,24 @@ class _AccountBody extends ConsumerWidget {
       ),
       builder: (_) => _ChangePasswordSheet(
         onSave: (oldPw, newPw) async {
-          return ref.read(authRepoProvider).changePassword(
-                userId: userId,
-                oldPassword: oldPw,
-                newPassword: newPw,
-              );
+          if (nksUser?.accessToken != null) {
+            try {
+              await ref.read(nksApiServiceProvider).updatePassword(
+                    token: nksUser!.accessToken!,
+                    oldPassword: oldPw,
+                    newPassword: newPw,
+                  );
+              return null;
+            } catch (e) {
+              return e.toString();
+            }
+          } else {
+            return ref.read(authRepoProvider).changePassword(
+                  userId: localUserId ?? '',
+                  oldPassword: oldPw,
+                  newPassword: newPw,
+                );
+          }
         },
       ),
     );
@@ -310,12 +391,27 @@ class _AccountBody extends ConsumerWidget {
         ],
       ),
     );
-
     if (confirmed != true) return;
+
+    await ref.read(nksAuthProvider.notifier).logout();
     await ref.read(authRepoProvider).logout();
     ref.invalidate(authProvider);
     ref.invalidate(currentUserProvider);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MenuItem {
+  final IconData icon;
+  final String label;
+  final int delay;
+  final VoidCallback onTap;
+  const _MenuItem(
+      {required this.icon,
+      required this.label,
+      required this.delay,
+      required this.onTap});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -325,6 +421,7 @@ class _AccountBody extends ConsumerWidget {
 class _ProfileHeader extends StatelessWidget {
   final String name;
   final String email;
+  final String? avatarUrl;
   final String? avatarPath;
   final int totalStars;
   final VoidCallback onTapAvatar;
@@ -332,14 +429,26 @@ class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.name,
     required this.email,
-    required this.avatarPath,
+    this.avatarUrl,
+    this.avatarPath,
     required this.totalStars,
     required this.onTapAvatar,
   });
 
+  ImageProvider? get _imageProvider {
+    if (avatarUrl != null &&
+        avatarUrl!.isNotEmpty &&
+        !avatarUrl!.contains('default.png')) {
+      return NetworkImage(avatarUrl!);
+    }
+    if (avatarPath != null) return FileImage(File(avatarPath!));
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
+    final image = _imageProvider;
 
     return Container(
       width: double.infinity,
@@ -368,10 +477,8 @@ class _ProfileHeader extends StatelessWidget {
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: Colors.white.withValues(alpha: 0.25),
-                  backgroundImage: avatarPath != null
-                      ? FileImage(File(avatarPath!))
-                      : null,
-                  child: avatarPath == null
+                  backgroundImage: image,
+                  child: image == null
                       ? Text(
                           name.isNotEmpty ? name[0].toUpperCase() : '?',
                           style: const TextStyle(
@@ -421,7 +528,8 @@ class _ProfileHeader extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
@@ -429,7 +537,8 @@ class _ProfileHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star_rounded, color: AppColors.star, size: 18),
+                const Icon(Icons.star_rounded,
+                    color: AppColors.star, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   '$totalStars sao tổng cộng',
@@ -536,7 +645,7 @@ class _StatCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Menu item card — mỗi item là 1 card riêng có shadow
+// Menu item card
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MenuItemCard extends StatelessWidget {
@@ -570,7 +679,8 @@ class _MenuItemCard extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
                 Container(
@@ -940,11 +1050,13 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   icon: Icon(_obscureOld
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined),
-                  onPressed: () => setState(() => _obscureOld = !_obscureOld),
+                  onPressed: () =>
+                      setState(() => _obscureOld = !_obscureOld),
                 ),
               ),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Vui lòng nhập mật khẩu cũ' : null,
+              validator: (v) => (v == null || v.isEmpty)
+                  ? 'Vui lòng nhập mật khẩu cũ'
+                  : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -958,7 +1070,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   icon: Icon(_obscureNew
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined),
-                  onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                  onPressed: () =>
+                      setState(() => _obscureNew = !_obscureNew),
                 ),
               ),
               validator: (v) {

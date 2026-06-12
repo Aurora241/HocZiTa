@@ -1,10 +1,84 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/datasources/local_datasource.dart';
 import '../../data/datasources/cached_content_datasource.dart';
 import '../../data/datasources/content_datasource.dart';
 import '../../data/models/user_model.dart';
+import '../../data/models/nks_user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/game_repository.dart';
+import '../../data/services/nks_api_service.dart';
+
+// ─── NKS Auth ─────────────────────────────────────────────────────────────────
+
+class NKSAuthState {
+  final NKSUserModel? user;
+  final bool isLoading;
+  final String? error;
+
+  const NKSAuthState({this.user, this.isLoading = false, this.error});
+
+  bool get isLoggedIn => user != null;
+}
+
+class NKSAuthNotifier extends StateNotifier<NKSAuthState> {
+  final NKSApiService _api;
+
+  static const tokenKey = 'nks_access_token';
+
+  NKSAuthNotifier(this._api) : super(const NKSAuthState()) {
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(tokenKey);
+    if (token == null) return;
+    try {
+      final user = await _api.getUserInfo(token: token);
+      if (mounted) state = NKSAuthState(user: user);
+    } catch (_) {
+      await prefs.remove(tokenKey);
+    }
+  }
+
+  Future<String?> login(String username, String password) async {
+    state = const NKSAuthState(isLoading: true);
+    try {
+      final user = await _api.login(username: username, password: password);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(tokenKey, user.accessToken!);
+      if (mounted) state = NKSAuthState(user: user);
+      return null;
+    } on NKSApiException catch (e) {
+      if (mounted) state = NKSAuthState(error: e.message);
+      return e.message;
+    }
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(tokenKey);
+    if (mounted) state = const NKSAuthState();
+  }
+
+  void updateUser(NKSUserModel user) {
+    if (mounted) state = NKSAuthState(user: user);
+  }
+}
+
+final nksApiServiceProvider = Provider<NKSApiService>((_) => NKSApiService());
+
+final nksAuthProvider =
+    StateNotifierProvider<NKSAuthNotifier, NKSAuthState>((ref) {
+  return NKSAuthNotifier(ref.watch(nksApiServiceProvider));
+});
+
+final currentNKSUserProvider = Provider<NKSUserModel?>((ref) {
+  return ref.watch(nksAuthProvider).user;
+});
+
+// ─── Content / Game ───────────────────────────────────────────────────────────
 
 /// Supabase + cache 24h + fallback offline.
 /// Đổi thành LocalDataSource() nếu muốn dùng JSON local hoàn toàn.
@@ -26,6 +100,10 @@ final gameRepoProvider = Provider<GameRepository>((ref) {
 /// Nguồn sự thật duy nhất cho trạng thái đăng nhập — dùng ở HomeScreen,
 /// LoginScreen, RegisterScreen.
 final authProvider = FutureProvider<bool>((ref) async {
+  // Ưu tiên NKS: kiểm tra token đã lưu trong SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getString(NKSAuthNotifier.tokenKey) != null) return true;
+  // Fallback: local auth (tài khoản đã tạo trước khi tích hợp NKS)
   return ref.read(authRepoProvider).isLoggedIn();
 });
 

@@ -30,9 +30,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     ref.read(authLoadingProvider.notifier).state = true;
 
-    final error = await ref.read(authRepoProvider).login(
-          email: _emailCtrl.text.trim(),
-          password: _passwordCtrl.text,
+    final error = await ref.read(nksAuthProvider.notifier).login(
+          _emailCtrl.text.trim(),
+          _passwordCtrl.text,
         );
 
     ref.read(authLoadingProvider.notifier).state = false;
