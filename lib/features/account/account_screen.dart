@@ -10,6 +10,7 @@ import '../../data/datasources/local_datasource.dart';
 import '../../data/models/nks_user_model.dart';
 import '../auth/auth_providers.dart';
 import 'my_progress_screen.dart';
+import 'update_info_screen.dart';
 
 // ── Provider thống kê ──────────────────────────────────────────────────────
 
@@ -202,16 +203,25 @@ class _AccountBody extends ConsumerWidget {
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const MyProgressScreen())),
       ),
+      if (nksUser != null)
+        _MenuItem(
+          icon: Icons.edit_note_rounded,
+          label: 'Cập nhật thông tin',
+          delay: 330,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(
+                  builder: (_) => UpdateInfoScreen(nksUser: nksUser))),
+        ),
       _MenuItem(
         icon: Icons.person_outline_rounded,
         label: 'Chỉnh sửa tên',
-        delay: 330,
+        delay: 410,
         onTap: () => _showEditName(context, ref, nksUser),
       ),
       _MenuItem(
         icon: Icons.lock_outline_rounded,
         label: 'Đổi mật khẩu',
-        delay: 410,
+        delay: 490,
         onTap: () => _showChangePassword(context, ref, nksUser, localUserId),
       ),
     ];
