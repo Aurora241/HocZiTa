@@ -11,6 +11,14 @@ final _provincesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>
   return ref.read(nksApiServiceProvider).getProvinces();
 });
 
+final _administrativesProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, int>((ref, provinceId) {
+  return ref.read(nksApiServiceProvider).getAdministratives(provinceId: provinceId);
+});
+
+final _communesProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, int>((ref, districtId) {
+  return ref.read(nksApiServiceProvider).getCommunes(districtId: districtId);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 class UpdateInfoScreen extends ConsumerStatefulWidget {
@@ -33,8 +41,15 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
 
   int _gender = 0;
   String? _selectedProvinceName;
+  int? _selectedProvinceId;
+  // ignore: unused_field — reserved for display/combine logic later
+  String? _selectedDistrictName;
+  int? _selectedDistrictId;
+  String? _selectedCommuneName;
   bool _loading = false;
   String? _errorMsg;
+
+  late final TextEditingController _addressCtrl;
 
   @override
   void initState() {
@@ -48,6 +63,7 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
     _introCtrl = TextEditingController(text: u.intro ?? '');
     _gender = u.gender;
     _selectedProvinceName = u.province;
+    _addressCtrl = TextEditingController();
   }
 
   @override
@@ -55,6 +71,7 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
     _lastnameCtrl.dispose();
     _firstnameCtrl.dispose();
     _phoneCtrl.dispose();
+    _addressCtrl.dispose();
     _dobCtrl.dispose();
     _websiteCtrl.dispose();
     _introCtrl.dispose();
@@ -74,7 +91,6 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
       firstDate: DateTime(1940),
       lastDate: DateTime.now(),
       helpText: 'Chọn ngày sinh',
-      locale: const Locale('vi'),
     );
     if (picked != null) {
       final y = picked.year.toString().padLeft(4, '0');
@@ -277,41 +293,78 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
                                 ),
                               ),
                               data: (provinces) {
-                                // Tìm province hiện tại trong danh sách để khớp value
-                                final currentMatch = _selectedProvinceName != null
-                                    ? provinces.firstWhere(
-                                        (p) => p['name'] == _selectedProvinceName,
-                                        orElse: () => {},
-                                      )
-                                    : null;
-                                final currentName = (currentMatch != null && currentMatch.isNotEmpty)
-                                    ? currentMatch['name'] as String?
-                                    : null;
-
-                                return DropdownButtonFormField<String>(
-                                  initialValue: currentName,
+                                return DropdownButtonFormField<int>(
+                                  initialValue: _selectedProvinceId,
                                   isExpanded: true,
                                   decoration: const InputDecoration(
                                     labelText: 'Tỉnh/thành',
                                     prefixIcon: Icon(Icons.location_on_outlined),
                                   ),
                                   items: [
-                                    const DropdownMenuItem<String>(
+                                    const DropdownMenuItem<int>(
                                       value: null,
                                       child: Text('-- Chọn tỉnh/thành --',
                                           style: TextStyle(color: AppColors.textSecondary)),
                                     ),
                                     ...provinces.map((p) {
-                                      final name = p['name'] as String? ?? '';
-                                      return DropdownMenuItem<String>(
-                                        value: name,
-                                        child: Text(name, overflow: TextOverflow.ellipsis),
+                                      final id = p['id'] as int;
+                                      final title = p['title'] as String? ?? '';
+                                      return DropdownMenuItem<int>(
+                                        value: id,
+                                        child: Text(title, overflow: TextOverflow.ellipsis),
                                       );
                                     }),
                                   ],
-                                  onChanged: (v) => setState(() => _selectedProvinceName = v),
+                                  onChanged: (id) {
+                                    final selected = id != null
+                                        ? provinces.firstWhere((p) => p['id'] == id, orElse: () => {})
+                                        : null;
+                                    setState(() {
+                                      _selectedProvinceId = id;
+                                      _selectedProvinceName = selected?['title'] as String?;
+                                      _selectedDistrictId = null;
+                                      _selectedDistrictName = null;
+                                      _selectedCommuneName = null;
+                                    });
+                                  },
                                 );
                               },
+                            ),
+
+                            // Quận/Huyện — hiện khi đã chọn tỉnh
+                            if (_selectedProvinceId != null) ...[
+                              const SizedBox(height: 12),
+                              _DistrictDropdown(
+                                provinceId: _selectedProvinceId!,
+                                selectedDistrictId: _selectedDistrictId,
+                                onChanged: (id, name) => setState(() {
+                                  _selectedDistrictId = id;
+                                  _selectedDistrictName = name;
+                                  _selectedCommuneName = null;
+                                }),
+                              ),
+                            ],
+
+                            // Xã/Phường — hiện khi đã chọn quận/huyện
+                            if (_selectedDistrictId != null) ...[
+                              const SizedBox(height: 12),
+                              _CommuneDropdown(
+                                districtId: _selectedDistrictId!,
+                                selectedCommune: _selectedCommuneName,
+                                onChanged: (name) => setState(() => _selectedCommuneName = name),
+                              ),
+                            ],
+
+                            // Địa chỉ cụ thể
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _addressCtrl,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: const InputDecoration(
+                                labelText: 'Số nhà, tên đường (không bắt buộc)',
+                                prefixIcon: Icon(Icons.home_outlined),
+                                hintText: 'VD: 123 Nguyễn Trãi',
+                              ),
                             ),
                           ]),
 
@@ -432,6 +485,146 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
         fontWeight: FontWeight.w600,
         color: AppColors.primary,
         letterSpacing: 0.3,
+      ),
+    );
+  }
+}
+
+// ── Dropdown Quận/Huyện ──────────────────────────────────────────────────────
+
+class _DistrictDropdown extends ConsumerWidget {
+  final int provinceId;
+  final int? selectedDistrictId;
+  final void Function(int? id, String? name) onChanged;
+
+  const _DistrictDropdown({
+    required this.provinceId,
+    required this.selectedDistrictId,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(_administrativesProvider(provinceId));
+    return async.when(
+      loading: () => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Quận/Huyện',
+          prefixIcon: Icon(Icons.location_city_outlined),
+        ),
+        child: Row(children: [
+          SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          SizedBox(width: 10),
+          Text('Đang tải...', style: TextStyle(color: AppColors.textSecondary)),
+        ]),
+      ),
+      error: (e, _) => TextFormField(
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: 'Quận/Huyện',
+          prefixIcon: const Icon(Icons.location_city_outlined),
+          hintText: 'Không thể tải danh sách',
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () => ref.invalidate(_administrativesProvider(provinceId)),
+          ),
+        ),
+      ),
+      data: (districts) => DropdownButtonFormField<int>(
+        initialValue: selectedDistrictId,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Quận/Huyện',
+          prefixIcon: Icon(Icons.location_city_outlined),
+        ),
+        items: [
+          const DropdownMenuItem<int>(
+            value: null,
+            child: Text('-- Chọn quận/huyện --',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ...districts.map((d) {
+            final id = d['id'] as int;
+            final title = d['title'] as String? ?? '';
+            return DropdownMenuItem<int>(
+              value: id,
+              child: Text(title, overflow: TextOverflow.ellipsis),
+            );
+          }),
+        ],
+        onChanged: (id) {
+          final selected = id != null
+              ? districts.firstWhere((d) => d['id'] == id, orElse: () => {})
+              : null;
+          onChanged(id, selected?['title'] as String?);
+        },
+      ),
+    );
+  }
+}
+
+// ── Dropdown Xã/Phường ────────────────────────────────────────────────────────
+
+class _CommuneDropdown extends ConsumerWidget {
+  final int districtId;
+  final String? selectedCommune;
+  final ValueChanged<String?> onChanged;
+
+  const _CommuneDropdown({
+    required this.districtId,
+    required this.selectedCommune,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(_communesProvider(districtId));
+    return async.when(
+      loading: () => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Xã/Phường',
+          prefixIcon: Icon(Icons.holiday_village_outlined),
+        ),
+        child: Row(children: [
+          SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          SizedBox(width: 10),
+          Text('Đang tải...', style: TextStyle(color: AppColors.textSecondary)),
+        ]),
+      ),
+      error: (e, _) => TextFormField(
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: 'Xã/Phường',
+          prefixIcon: const Icon(Icons.holiday_village_outlined),
+          hintText: 'Không thể tải danh sách',
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () => ref.invalidate(_communesProvider(districtId)),
+          ),
+        ),
+      ),
+      data: (communes) => DropdownButtonFormField<String>(
+        initialValue: selectedCommune,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Xã/Phường',
+          prefixIcon: Icon(Icons.holiday_village_outlined),
+        ),
+        items: [
+          const DropdownMenuItem<String>(
+            value: null,
+            child: Text('-- Chọn xã/phường --',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ...communes.map((c) {
+            final title = c['title'] as String? ?? '';
+            return DropdownMenuItem<String>(
+              value: title,
+              child: Text(title, overflow: TextOverflow.ellipsis),
+            );
+          }),
+        ],
+        onChanged: onChanged,
       ),
     );
   }

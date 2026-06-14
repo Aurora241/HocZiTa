@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/nks_user_model.dart';
 
 class NKSApiException implements Exception {
@@ -196,9 +198,34 @@ class NKSApiService {
         '$_onlineBase/provinces',
         data: {'country_id': 192, 'slcBox': true},
       );
-      return List<Map<String, dynamic>>.from(res.data['data'] ?? []);
+      debugPrint('[NKS] provinces status: ${res.statusCode}');
+
+      // Dio có thể trả String nếu server không set Content-Type: application/json
+      dynamic body = res.data;
+      if (body is String) {
+        debugPrint('[NKS] provinces body is String, parsing JSON manually');
+        body = jsonDecode(body);
+      }
+      debugPrint('[NKS] provinces body type: ${body.runtimeType}');
+
+      if (body is! Map) {
+        debugPrint('[NKS] provinces unexpected body: $body');
+        return [];
+      }
+
+      final list = body['data'];
+      debugPrint('[NKS] provinces list type: ${list.runtimeType}, length: ${list?.length}');
+      if (list != null && (list as List).isNotEmpty) {
+        debugPrint('[NKS] provinces first item: ${list.first}');
+      }
+      if (list == null) return [];
+      return List<Map<String, dynamic>>.from(list as List);
     } on DioException catch (e) {
+      debugPrint('[NKS] provinces DioError: ${e.type} | ${e.response?.statusCode} | ${e.response?.data}');
       throw NKSApiException(_parseDioError(e));
+    } catch (e) {
+      debugPrint('[NKS] provinces unexpected error: $e');
+      throw NKSApiException('Không thể tải danh sách tỉnh thành');
     }
   }
 
@@ -210,9 +237,44 @@ class NKSApiService {
         '$_onlineBase/administratives',
         data: {'province_id': provinceId, 'slcBox': true},
       );
-      return List<Map<String, dynamic>>.from(res.data['data'] ?? []);
+      dynamic body = res.data;
+      if (body is String) body = jsonDecode(body);
+      if (body is! Map) return [];
+      final list = body['data'];
+      if (list == null) return [];
+      return List<Map<String, dynamic>>.from(list as List);
     } on DioException catch (e) {
       throw NKSApiException(_parseDioError(e));
+    } catch (e) {
+      throw NKSApiException('Không thể tải danh sách quận/huyện');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getCommunes({
+    required int districtId,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '$_onlineBase/communes',
+        data: {'administrative_id': districtId, 'slcBox': true},
+      );
+      debugPrint('[NKS] communes status: ${res.statusCode}');
+      dynamic body = res.data;
+      if (body is String) body = jsonDecode(body);
+      if (body is! Map) {
+        debugPrint('[NKS] communes unexpected body type: ${body.runtimeType}');
+        return [];
+      }
+      final list = body['data'];
+      debugPrint('[NKS] communes length: ${list?.length}, first: ${(list as List?)?.firstOrNull}');
+      if (list == null) return [];
+      return List<Map<String, dynamic>>.from(list);
+    } on DioException catch (e) {
+      debugPrint('[NKS] communes DioError: ${e.type} | ${e.response?.statusCode} | ${e.response?.data}');
+      throw NKSApiException(_parseDioError(e));
+    } catch (e) {
+      debugPrint('[NKS] communes error: $e');
+      throw NKSApiException('Không thể tải danh sách xã/phường');
     }
   }
 

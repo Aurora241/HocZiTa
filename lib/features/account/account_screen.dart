@@ -52,15 +52,25 @@ class AccountScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nksUser = ref.watch(currentNKSUserProvider);
+    final nksState = ref.watch(nksAuthProvider);
 
     if (nksUser != null) {
       return _AccountBody(key: ValueKey('${nksUser.id}_${nksUser.avatar}'));
+    }
+
+    // Session NKS đang được restore từ SharedPreferences — chờ
+    if (nksState.isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     // Fallback: local auth (tài khoản cũ trước khi tích hợp NKS)
     final userAsync = ref.watch(currentUserProvider);
     return userAsync.when(
       loading: () => const Scaffold(
+        backgroundColor: Colors.transparent,
         body: Center(child: CircularProgressIndicator()),
       ),
       error: (e, _) => const Scaffold(
@@ -69,7 +79,8 @@ class AccountScreen extends ConsumerWidget {
       data: (user) {
         if (user == null) {
           return const Scaffold(
-            body: Center(child: Text('Vui lòng đăng nhập')),
+            backgroundColor: Colors.transparent,
+            body: Center(child: CircularProgressIndicator()),
           );
         }
         return _AccountBody(
@@ -1195,3 +1206,4 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     );
   }
 }
+

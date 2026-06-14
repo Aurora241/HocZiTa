@@ -81,6 +81,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget build(BuildContext context) {
     final authAsync = ref.watch(authProvider);
 
+    // Reset về tab Learn khi đăng xuất
+    ref.listen<AsyncValue<bool>>(authProvider, (_, next) {
+      if (next.value == false && _selectedIndex != 0) {
+        _fadeController.forward(from: 0);
+        setState(() => _selectedIndex = 0);
+      }
+    });
+
     return authAsync.when(
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
