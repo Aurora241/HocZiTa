@@ -10,6 +10,8 @@ import '../../data/datasources/local_datasource.dart';
 import '../../data/models/nks_user_model.dart';
 import '../auth/auth_providers.dart';
 import 'my_progress_screen.dart';
+import 'stub_screens.dart';
+import 'update_cccd_screen.dart';
 import 'update_info_screen.dart';
 
 // ── Provider thống kê ──────────────────────────────────────────────────────
@@ -212,18 +214,59 @@ class _AccountBody extends ConsumerWidget {
               MaterialPageRoute(
                   builder: (_) => UpdateInfoScreen(nksUser: nksUser))),
         ),
+      if (nksUser != null)
+        _MenuItem(
+          icon: Icons.credit_card_rounded,
+          label: 'Cập nhật CCCD',
+          delay: 410,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(
+                  builder: (_) => UpdateCccdScreen(nksUser: nksUser))),
+        ),
       _MenuItem(
         icon: Icons.person_outline_rounded,
         label: 'Chỉnh sửa tên',
-        delay: 410,
+        delay: 490,
         onTap: () => _showEditName(context, ref, nksUser),
       ),
       _MenuItem(
         icon: Icons.lock_outline_rounded,
         label: 'Đổi mật khẩu',
-        delay: 490,
+        delay: 570,
         onTap: () => _showChangePassword(context, ref, nksUser, localUserId),
       ),
+      if (nksUser != null)
+        _MenuItem(
+          icon: Icons.card_membership_rounded,
+          label: 'Thành viên',
+          delay: 650,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const MembershipScreen())),
+        ),
+      if (nksUser != null)
+        _MenuItem(
+          icon: Icons.history_rounded,
+          label: 'Lịch sử giao dịch',
+          delay: 730,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const HistoryScreen())),
+        ),
+      if (nksUser != null)
+        _MenuItem(
+          icon: Icons.redeem_rounded,
+          label: 'Điểm thưởng',
+          delay: 810,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const RewardScreen())),
+        ),
+      if (nksUser != null)
+        _MenuItem(
+          icon: Icons.account_balance_rounded,
+          label: 'Thông tin ngân hàng',
+          delay: 890,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const BankInfoScreen())),
+        ),
     ];
 
     return items.asMap().entries.map((e) {
