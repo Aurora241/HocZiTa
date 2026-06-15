@@ -47,9 +47,9 @@ android {
 
             storeFile = if (envStore != null) file(envStore)
                         else keystoreProperties["storeFile"]?.let { file(it as String) }
-            storePassword = envStorePass ?: keystoreProperties["storePassword"] as String?
-            keyAlias = envKeyAlias ?: keystoreProperties["keyAlias"] as String?
-            keyPassword = envKeyPass ?: keystoreProperties["keyPassword"] as String?
+            storePassword = (envStorePass ?: keystoreProperties["storePassword"] as String?)?.trim()
+            keyAlias = (envKeyAlias ?: keystoreProperties["keyAlias"] as String?)?.trim()
+            keyPassword = (envKeyPass ?: keystoreProperties["keyPassword"] as String?)?.trim()
         }
     }
 
