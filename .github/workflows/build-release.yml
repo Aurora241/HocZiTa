@@ -30,6 +30,17 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Create supabase_config.dart
+        run: |
+          mkdir -p lib/core/config
+          cat > lib/core/config/supabase_config.dart << 'EOF'
+          class SupabaseConfig {
+            SupabaseConfig._();
+            static const String url     = '${{ secrets.SUPABASE_URL }}';
+            static const String anonKey = '${{ secrets.SUPABASE_ANON_KEY }}';
+          }
+          EOF
+
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
