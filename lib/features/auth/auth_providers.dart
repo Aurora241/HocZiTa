@@ -117,6 +117,33 @@ final currentNKSUserProvider = Provider<NKSUserModel?>((ref) {
   return ref.watch(nksAuthProvider).user;
 });
 
+// ─── User Sync Cache ─────────────────────────────────────────────────────────
+// Bảng tạm sync name/avatar/point — dùng ở nhiều widget, tránh gọi API lại
+
+class UserSyncData {
+  final String name;
+  final String? avatar;
+  final int point;
+
+  const UserSyncData({required this.name, this.avatar, this.point = 0});
+}
+
+final userSyncProvider = Provider<UserSyncData>((ref) {
+  final nksUser = ref.watch(currentNKSUserProvider);
+  if (nksUser != null) {
+    return UserSyncData(
+      name: nksUser.displayName,
+      avatar: nksUser.avatar,
+      point: nksUser.point ?? 0,
+    );
+  }
+  final localUser = ref.watch(currentUserProvider).valueOrNull;
+  return UserSyncData(
+    name: localUser?.name ?? '',
+    avatar: localUser?.avatarPath,
+  );
+});
+
 // ─── Content / Game ───────────────────────────────────────────────────────────
 
 /// Supabase + cache 24h + fallback offline.

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -21,8 +23,7 @@ final _statsProvider = FutureProvider.autoDispose<_Stats>((ref) async {
 
   // Ưu tiên NKS user
   final nksUser = ref.watch(currentNKSUserProvider);
-  final userId =
-      nksUser != null ? nksUser.id.toString() : null;
+  final userId = nksUser?.id.toString();
 
   // Fallback local user
   final localUserId = userId ??
@@ -319,16 +320,36 @@ class _AccountBody extends ConsumerWidget {
     if (source == null) return;
 
     final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      imageQuality: 80,
-      maxWidth: 400,
-    );
+    final picked = await picker.pickImage(source: source, imageQuality: 90, maxWidth: 1024);
     if (picked == null) return;
 
+    // Crop/edit step
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Chỉnh sửa ảnh',
+          toolbarColor: AppColors.primary,
+          toolbarWidgetColor: Colors.white,
+          lockAspectRatio: false,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.original,
+          ],
+        ),
+        IOSUiSettings(
+          title: 'Chỉnh sửa ảnh',
+          aspectRatioPresets: [
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.original,
+          ],
+        ),
+      ],
+    );
+    if (cropped == null) return;
+
     if (nksUser?.accessToken != null) {
-      // NKS: upload Base64
-      final bytes = await File(picked.path).readAsBytes();
+      final bytes = await File(cropped.path).readAsBytes();
       final base64Image = base64Encode(bytes);
       try {
         final updated = await ref.read(nksApiServiceProvider).updateAvatar(
@@ -351,12 +372,11 @@ class _AccountBody extends ConsumerWidget {
         }
       }
     } else {
-      // Fallback: lưu local
       final user = ref.read(currentUserProvider).valueOrNull;
       if (user == null) return;
       await ref
           .read(authRepoProvider)
-          .updateProfile(userId: user.id, avatarPath: picked.path);
+          .updateProfile(userId: user.id, avatarPath: cropped.path);
       ref.invalidate(currentUserProvider);
     }
   }
@@ -1012,7 +1032,7 @@ class _EditNameSheetState extends State<_EditNameSheet> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bottom sheet: đổi mật khẩu
+// Bottom sheet: đổi mật khẩu (có random password generator)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ChangePasswordSheet extends StatefulWidget {
@@ -1028,11 +1048,23 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   final _oldCtrl = TextEditingController();
   final _newCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+
   bool _obscureOld = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
   bool _loading = false;
   String? _errorMsg;
+
+  // Random password generator
+  bool _showGenerator = false;
+  int _charCount = 12;
+  bool _useUpper = true;
+  bool _useLower = true;
+  bool _useDigit = true;
+  bool _useSpecial = false;
+
+  // Xác nhận đã lưu mật khẩu
+  bool _confirmedSaved = false;
 
   @override
   void dispose() {
@@ -1042,13 +1074,44 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     super.dispose();
   }
 
+  String _generatePassword() {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = r'!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+    String chars = '';
+    if (_useUpper) chars += upper;
+    if (_useLower) chars += lower;
+    if (_useDigit) chars += digits;
+    if (_useSpecial) chars += special;
+    if (chars.isEmpty) chars = lower + digits;
+
+    final rng = math.Random.secure();
+    return List.generate(_charCount, (_) => chars[rng.nextInt(chars.length)]).join();
+  }
+
+  void _applyGeneratedPassword() {
+    final pw = _generatePassword();
+    setState(() {
+      _newCtrl.text = pw;
+      _confirmCtrl.text = pw;
+      _obscureNew = true;
+      _obscureConfirm = true;
+      _showGenerator = false;
+    });
+  }
+
   Future<void> _save() async {
     setState(() => _errorMsg = null);
     if (!_formKey.currentState!.validate()) return;
+    if (!_confirmedSaved) {
+      setState(() => _errorMsg = 'Vui lòng xác nhận đã lưu mật khẩu mới');
+      return;
+    }
     setState(() => _loading = true);
 
     final error = await widget.onSave(_oldCtrl.text, _newCtrl.text);
-
     setState(() => _loading = false);
 
     if (error != null) {
@@ -1069,7 +1132,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: 24,
         right: 24,
@@ -1080,6 +1143,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Container(
@@ -1092,17 +1156,16 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Đổi mật khẩu',
-                style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary),
-              ),
+            const Text(
+              'Đổi mật khẩu',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary),
             ),
             const SizedBox(height: 16),
+
+            // Mật khẩu cũ
             TextFormField(
               controller: _oldCtrl,
               obscureText: _obscureOld,
@@ -1114,15 +1177,15 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   icon: Icon(_obscureOld
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined),
-                  onPressed: () =>
-                      setState(() => _obscureOld = !_obscureOld),
+                  onPressed: () => setState(() => _obscureOld = !_obscureOld),
                 ),
               ),
-              validator: (v) => (v == null || v.isEmpty)
-                  ? 'Vui lòng nhập mật khẩu cũ'
-                  : null,
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? 'Vui lòng nhập mật khẩu cũ' : null,
             ),
             const SizedBox(height: 12),
+
+            // Mật khẩu mới + nút dice
             TextFormField(
               controller: _newCtrl,
               obscureText: _obscureNew,
@@ -1130,12 +1193,28 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
               decoration: InputDecoration(
                 labelText: 'Mật khẩu mới',
                 prefixIcon: const Icon(Icons.lock_outline_rounded),
-                suffixIcon: IconButton(
-                  icon: Icon(_obscureNew
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined),
-                  onPressed: () =>
-                      setState(() => _obscureNew = !_obscureNew),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.casino_rounded,
+                        color: _showGenerator
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
+                      tooltip: 'Tạo mật khẩu ngẫu nhiên',
+                      onPressed: () =>
+                          setState(() => _showGenerator = !_showGenerator),
+                    ),
+                    IconButton(
+                      icon: Icon(_obscureNew
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined),
+                      onPressed: () =>
+                          setState(() => _obscureNew = !_obscureNew),
+                    ),
+                  ],
                 ),
               ),
               validator: (v) {
@@ -1145,7 +1224,36 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 return null;
               },
             ),
+
+            // Generator panel (animated)
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: _showGenerator
+                  ? _GeneratorPanel(
+                      charCount: _charCount,
+                      useUpper: _useUpper,
+                      useLower: _useLower,
+                      useDigit: _useDigit,
+                      useSpecial: _useSpecial,
+                      onCharCountChanged: (v) =>
+                          setState(() => _charCount = v.round()),
+                      onUpperChanged: (v) =>
+                          setState(() => _useUpper = v ?? _useUpper),
+                      onLowerChanged: (v) =>
+                          setState(() => _useLower = v ?? _useLower),
+                      onDigitChanged: (v) =>
+                          setState(() => _useDigit = v ?? _useDigit),
+                      onSpecialChanged: (v) =>
+                          setState(() => _useSpecial = v ?? _useSpecial),
+                      onGenerate: _applyGeneratedPassword,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+
             const SizedBox(height: 12),
+
+            // Xác nhận mật khẩu mới
             TextFormField(
               controller: _confirmCtrl,
               obscureText: _obscureConfirm,
@@ -1168,8 +1276,35 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 return null;
               },
             ),
+
+            const SizedBox(height: 8),
+
+            // Xác nhận đã lưu mật khẩu
+            InkWell(
+              onTap: () => setState(() => _confirmedSaved = !_confirmedSaved),
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: _confirmedSaved,
+                    activeColor: AppColors.primary,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    onChanged: (v) =>
+                        setState(() => _confirmedSaved = v ?? false),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Tôi đã lưu mật khẩu mới vào nơi an toàn',
+                      style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             if (_errorMsg != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   const Icon(Icons.error_outline_rounded,
@@ -1178,18 +1313,18 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   Expanded(
                     child: Text(
                       _errorMsg!,
-                      style: const TextStyle(
-                          color: AppColors.error, fontSize: 13),
+                      style: const TextStyle(color: AppColors.error, fontSize: 13),
                     ),
                   ),
                 ],
               ),
             ],
+
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _loading ? null : _save,
+                onPressed: (_loading || !_confirmedSaved) ? null : _save,
                 child: _loading
                     ? const SizedBox(
                         height: 18,
@@ -1202,6 +1337,139 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generator panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GeneratorPanel extends StatelessWidget {
+  final int charCount;
+  final bool useUpper;
+  final bool useLower;
+  final bool useDigit;
+  final bool useSpecial;
+  final ValueChanged<double> onCharCountChanged;
+  final ValueChanged<bool?> onUpperChanged;
+  final ValueChanged<bool?> onLowerChanged;
+  final ValueChanged<bool?> onDigitChanged;
+  final ValueChanged<bool?> onSpecialChanged;
+  final VoidCallback onGenerate;
+
+  const _GeneratorPanel({
+    required this.charCount,
+    required this.useUpper,
+    required this.useLower,
+    required this.useDigit,
+    required this.useSpecial,
+    required this.onCharCountChanged,
+    required this.onUpperChanged,
+    required this.onLowerChanged,
+    required this.onDigitChanged,
+    required this.onSpecialChanged,
+    required this.onGenerate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.casino_rounded, color: AppColors.primary, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Tạo mật khẩu ngẫu nhiên',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Text('Số ký tự:', style: TextStyle(fontSize: 13)),
+              Expanded(
+                child: Slider(
+                  value: charCount.toDouble(),
+                  min: 6,
+                  max: 32,
+                  divisions: 26,
+                  activeColor: AppColors.primary,
+                  onChanged: onCharCountChanged,
+                ),
+              ),
+              SizedBox(
+                width: 28,
+                child: Text(
+                  '$charCount',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          _CheckOption('Ký tự hoa (A–Z)', useUpper, onUpperChanged),
+          _CheckOption('Ký tự thường (a–z)', useLower, onLowerChanged),
+          _CheckOption('Ký tự số (0–9)', useDigit, onDigitChanged),
+          _CheckOption('Ký tự đặc biệt (!@#...)', useSpecial, onSpecialChanged),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Tạo mật khẩu'),
+              onPressed: onGenerate,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CheckOption extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+
+  const _CheckOption(this.label, this.value, this.onChanged);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(4),
+      child: Row(
+        children: [
+          Checkbox(
+            value: value,
+            activeColor: AppColors.primary,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            onChanged: onChanged,
+          ),
+          Text(label, style: const TextStyle(fontSize: 13)),
+        ],
       ),
     );
   }

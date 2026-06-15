@@ -45,6 +45,9 @@ dependencies:
   # Image picker (avatar)
   image_picker: ^1.1.2
 
+  # Image cropper (edit avatar)
+  image_cropper: ^9.1.0
+
   # UUID (tạo id duy nhất)
   uuid: ^4.5.1
 
