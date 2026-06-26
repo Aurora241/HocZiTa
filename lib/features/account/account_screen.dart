@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1062,6 +1063,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   bool _useLower = true;
   bool _useDigit = true;
   bool _useSpecial = false;
+  String? _generatedPassword;
 
   // Xác nhận đã lưu mật khẩu
   bool _confirmedSaved = false;
@@ -1091,15 +1093,38 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     return List.generate(_charCount, (_) => chars[rng.nextInt(chars.length)]).join();
   }
 
-  void _applyGeneratedPassword() {
-    final pw = _generatePassword();
-    setState(() {
-      _newCtrl.text = pw;
-      _confirmCtrl.text = pw;
-      _obscureNew = true;
-      _obscureConfirm = true;
-      _showGenerator = false;
-    });
+  void _onGeneratePressed() {
+    setState(() => _generatedPassword = _generatePassword());
+  }
+
+  Future<void> _confirmGeneratedPassword() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận đổi mật khẩu'),
+        content: const Text('Bạn có chắc muốn dùng mật khẩu vừa tạo không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && _generatedPassword != null) {
+      setState(() {
+        _newCtrl.text = _generatedPassword!;
+        _confirmCtrl.text = _generatedPassword!;
+        _obscureNew = false;
+        _obscureConfirm = false;
+        _showGenerator = false;
+        _generatedPassword = null;
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -1236,6 +1261,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                       useLower: _useLower,
                       useDigit: _useDigit,
                       useSpecial: _useSpecial,
+                      generatedPassword: _generatedPassword,
                       onCharCountChanged: (v) =>
                           setState(() => _charCount = v.round()),
                       onUpperChanged: (v) =>
@@ -1246,7 +1272,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                           setState(() => _useDigit = v ?? _useDigit),
                       onSpecialChanged: (v) =>
                           setState(() => _useSpecial = v ?? _useSpecial),
-                      onGenerate: _applyGeneratedPassword,
+                      onGenerate: _onGeneratePressed,
+                      onConfirm: _confirmGeneratedPassword,
                     )
                   : const SizedBox.shrink(),
             ),
@@ -1352,12 +1379,14 @@ class _GeneratorPanel extends StatelessWidget {
   final bool useLower;
   final bool useDigit;
   final bool useSpecial;
+  final String? generatedPassword;
   final ValueChanged<double> onCharCountChanged;
   final ValueChanged<bool?> onUpperChanged;
   final ValueChanged<bool?> onLowerChanged;
   final ValueChanged<bool?> onDigitChanged;
   final ValueChanged<bool?> onSpecialChanged;
   final VoidCallback onGenerate;
+  final VoidCallback onConfirm;
 
   const _GeneratorPanel({
     required this.charCount,
@@ -1365,12 +1394,14 @@ class _GeneratorPanel extends StatelessWidget {
     required this.useLower,
     required this.useDigit,
     required this.useSpecial,
+    required this.generatedPassword,
     required this.onCharCountChanged,
     required this.onUpperChanged,
     required this.onLowerChanged,
     required this.onDigitChanged,
     required this.onSpecialChanged,
     required this.onGenerate,
+    required this.onConfirm,
   });
 
   @override
@@ -1441,6 +1472,54 @@ class _GeneratorPanel extends StatelessWidget {
               onPressed: onGenerate,
             ),
           ),
+          if (generatedPassword != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      generatedPassword!,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    color: AppColors.textSecondary,
+                    tooltip: 'Sao chép',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: generatedPassword!));
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                ),
+                onPressed: onConfirm,
+                child: const Text('Xác nhận dùng mật khẩu này'),
+              ),
+            ),
+          ],
         ],
       ),
     );

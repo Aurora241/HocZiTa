@@ -8,6 +8,7 @@ import 'picture_guess_screen.dart';
 import 'count_game_screen.dart';
 import 'calculate_game_screen.dart';
 import 'compare_game_screen.dart';
+import 'math_crossword_screen.dart';
 
 class GameListScreen extends StatelessWidget {
   final String category; // 'language' | 'math'
@@ -61,6 +62,12 @@ class GameListScreen extends StatelessWidget {
       title: 'So sánh',
       description: 'Chọn số lớn hơn / nhỏ hơn — phán đoán nhanh',
       screenBuilder: (level) => CompareGameScreen(level: level),
+    ),
+    _GameItem(
+      icon: Icons.grid_3x3_rounded,
+      title: 'Math Crossword',
+      description: 'Điền số vào ô trống — hàng ngang và hàng dọc đều đúng',
+      screenBuilder: (level) => MathCrosswordScreen(level: level),
     ),
   ];
 

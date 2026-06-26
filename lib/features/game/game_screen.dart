@@ -71,7 +71,7 @@ class GameScreen extends StatelessWidget {
                           startColor: const Color(0xFF7C3AED),
                           endColor: const Color(0xFF9F67FA),
                           title: 'Toán học',
-                          subtitle: '3 games',
+                          subtitle: '4 games',
                           animationDelay: 250.ms,
                           onTap: () => Navigator.push(
                             context,
