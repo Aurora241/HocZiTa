@@ -15,9 +15,6 @@ final _administrativesProvider = FutureProvider.autoDispose.family<List<Map<Stri
   return ref.read(nksApiServiceProvider).getAdministratives(provinceId: provinceId);
 });
 
-final _communesProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, int>((ref, districtId) {
-  return ref.read(nksApiServiceProvider).getCommunes(districtId: districtId);
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -45,7 +42,6 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
   // ignore: unused_field — reserved for display/combine logic later
   String? _selectedDistrictName;
   int? _selectedDistrictId;
-  String? _selectedCommuneName;
   bool _loading = false;
   String? _errorMsg;
 
@@ -324,7 +320,6 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
                                       _selectedProvinceName = selected?['title'] as String?;
                                       _selectedDistrictId = null;
                                       _selectedDistrictName = null;
-                                      _selectedCommuneName = null;
                                     });
                                   },
                                 );
@@ -340,18 +335,7 @@ class _UpdateInfoScreenState extends ConsumerState<UpdateInfoScreen> {
                                 onChanged: (id, name) => setState(() {
                                   _selectedDistrictId = id;
                                   _selectedDistrictName = name;
-                                  _selectedCommuneName = null;
                                 }),
-                              ),
-                            ],
-
-                            // Xã/Phường — hiện khi đã chọn quận/huyện
-                            if (_selectedDistrictId != null) ...[
-                              const SizedBox(height: 12),
-                              _CommuneDropdown(
-                                districtId: _selectedDistrictId!,
-                                selectedCommune: _selectedCommuneName,
-                                onChanged: (name) => setState(() => _selectedCommuneName = name),
                               ),
                             ],
 
@@ -563,69 +547,3 @@ class _DistrictDropdown extends ConsumerWidget {
   }
 }
 
-// ── Dropdown Xã/Phường ────────────────────────────────────────────────────────
-
-class _CommuneDropdown extends ConsumerWidget {
-  final int districtId;
-  final String? selectedCommune;
-  final ValueChanged<String?> onChanged;
-
-  const _CommuneDropdown({
-    required this.districtId,
-    required this.selectedCommune,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(_communesProvider(districtId));
-    return async.when(
-      loading: () => const InputDecorator(
-        decoration: InputDecoration(
-          labelText: 'Xã/Phường',
-          prefixIcon: Icon(Icons.holiday_village_outlined),
-        ),
-        child: Row(children: [
-          SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-          SizedBox(width: 10),
-          Text('Đang tải...', style: TextStyle(color: AppColors.textSecondary)),
-        ]),
-      ),
-      error: (e, _) => TextFormField(
-        readOnly: true,
-        decoration: InputDecoration(
-          labelText: 'Xã/Phường',
-          prefixIcon: const Icon(Icons.holiday_village_outlined),
-          hintText: 'Không thể tải danh sách',
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => ref.invalidate(_communesProvider(districtId)),
-          ),
-        ),
-      ),
-      data: (communes) => DropdownButtonFormField<String>(
-        initialValue: selectedCommune,
-        isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: 'Xã/Phường',
-          prefixIcon: Icon(Icons.holiday_village_outlined),
-        ),
-        items: [
-          const DropdownMenuItem<String>(
-            value: null,
-            child: Text('-- Chọn xã/phường --',
-                style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ...communes.map((c) {
-            final title = c['title'] as String? ?? '';
-            return DropdownMenuItem<String>(
-              value: title,
-              child: Text(title, overflow: TextOverflow.ellipsis),
-            );
-          }),
-        ],
-        onChanged: onChanged,
-      ),
-    );
-  }
-}
