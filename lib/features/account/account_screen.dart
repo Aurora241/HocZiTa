@@ -324,9 +324,13 @@ class _AccountBody extends ConsumerWidget {
     final picked = await picker.pickImage(source: source, imageQuality: 90, maxWidth: 1024);
     if (picked == null) return;
 
-    // Crop/edit step
+    // Crop/edit step — giới hạn 512px + quality 75 để base64 không quá lớn cho API
     final cropped = await ImageCropper().cropImage(
       sourcePath: picked.path,
+      maxWidth: 512,
+      maxHeight: 512,
+      compressQuality: 75,
+      compressFormat: ImageCompressFormat.jpg,
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: 'Chỉnh sửa ảnh',
@@ -364,7 +368,8 @@ class _AccountBody extends ConsumerWidget {
             backgroundColor: AppColors.success,
           ));
         }
-      } catch (e) {
+      } catch (e, st) {
+        debugPrint('=== AVATAR UPLOAD ERROR: $e\n$st');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(e.toString()),
